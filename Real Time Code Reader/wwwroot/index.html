@@ -1,0 +1,861 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevMentor AI - Real-Time Code Learning</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- SignalR Client Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+    <!-- Marked.js for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- CodeMirror for Code Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/ruby/ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+
+    <style>
+        /* ============================================
+           RESET & BASE STYLES
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Neo-Brutalism Color System */
+            --primary: #2563eb; /* Electric Blue */
+            --primary-light: #3b82f6;
+            --accent: #10b981; /* Neon Green */
+            --accent-light: #34d399;
+            --warning: #f59e0b; /* Amber */
+            --error: #ef4444; /* Red */
+
+            --background: #fafafa; /* Near White */
+            --foreground: #1a1a1a; /* Deep Charcoal */
+            --secondary: #f3f4f6;
+            --border: #1a1a1a; /* Bold Black */
+            --muted: #6b7280;
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--background);
+            color: var(--foreground);
+            overflow: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            font-weight: 700;
+        }
+
+        /* ============================================
+           UTILITY CLASSES
+           ============================================ */
+        .brutal-border {
+            border: 3px solid var(--border);
+        }
+
+        .brutal-shadow {
+            box-shadow: 6px 6px 0px var(--border);
+        }
+
+        .brutal-shadow-sm {
+            box-shadow: 3px 3px 0px var(--border);
+        }
+
+        /* ============================================
+           LAYOUT
+           ============================================ */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            border-bottom: 3px solid var(--border);
+            background: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-box {
+            background: var(--primary);
+            padding: 0.75rem;
+            border: 3px solid var(--border);
+            box-shadow: 3px 3px 0px var(--border);
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+
+        .connection-status {
+            padding: 0.5rem 1rem;
+            border: 3px solid var(--border);
+            box-shadow: 3px 3px 0px var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+            .connection-status.connected {
+                background: var(--accent);
+            }
+
+            .connection-status.disconnected {
+                background: var(--secondary);
+            }
+
+            .connection-status.connecting {
+                background: var(--warning);
+            }
+
+        /* Controls Bar */
+        .controls-bar {
+            border-bottom: 3px solid var(--border);
+            background: var(--secondary);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+            .control-group label {
+                font-weight: 600;
+                font-size: 0.875rem;
+            }
+
+            .control-group select {
+                padding: 0.5rem 1rem;
+                border: 3px solid var(--border);
+                background: white;
+                font-family: var(--font-body);
+                font-size: 0.875rem;
+                cursor: pointer;
+            }
+
+        .analyze-btn {
+            padding: 0.5rem 1rem;
+            border: 3px solid var(--border);
+            box-shadow: 3px 3px 0px var(--border);
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.1s;
+        }
+
+            .analyze-btn:hover:not(:disabled) {
+                transform: translate(2px, 2px);
+                box-shadow: 1px 1px 0px var(--border);
+            }
+
+            .analyze-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+        .char-count {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* Main Content - Split Screen */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-section {
+            width: 60%;
+            border-right: 3px solid var(--border);
+            position: relative;
+        }
+
+        .feedback-section {
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        /* Feedback Panel */
+        .feedback-header {
+            border-bottom: 3px solid var(--border);
+            background: var(--secondary);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+            .feedback-header h2 {
+                font-size: 1.25rem;
+            }
+
+        .feedback-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        /* Status Cards */
+        .status-card {
+            padding: 1rem;
+            border: 3px solid var(--border);
+            box-shadow: 3px 3px 0px var(--border);
+            margin-bottom: 1rem;
+        }
+
+            .status-card.analyzing {
+                background: rgba(37, 99, 235, 0.1);
+                border-color: var(--primary);
+                animation: pulse-border 2s ease-in-out infinite;
+            }
+
+            .status-card.complete {
+                background: rgba(16, 185, 129, 0.1);
+            }
+
+            .status-card.error {
+                background: rgba(239, 68, 68, 0.1);
+            }
+
+            .status-card.waiting {
+                background: var(--secondary);
+            }
+
+        .status-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+            .status-card-header h3 {
+                font-size: 1rem;
+            }
+
+        .status-card-body {
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+
+        /* Analysis Result */
+        .analysis-result {
+            padding: 1.5rem;
+            border: 3px solid var(--border);
+            background: white;
+            margin-top: 1rem;
+        }
+
+            .analysis-result h3 {
+                margin-top: 1.5rem;
+                margin-bottom: 0.75rem;
+                font-size: 1.125rem;
+            }
+
+            .analysis-result p {
+                margin-bottom: 1rem;
+                line-height: 1.6;
+            }
+
+            .analysis-result ul, .analysis-result ol {
+                margin-left: 1.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .analysis-result li {
+                margin-bottom: 0.5rem;
+                line-height: 1.6;
+            }
+
+            .analysis-result code {
+                background: var(--secondary);
+                padding: 0.125rem 0.375rem;
+                border-radius: 3px;
+                font-family: var(--font-mono);
+                font-size: 0.875em;
+            }
+
+            .analysis-result pre {
+                background: #282a36;
+                color: #f8f8f2;
+                padding: 1rem;
+                overflow-x: auto;
+                margin-bottom: 1rem;
+                font-family: var(--font-mono);
+                font-size: 0.875rem;
+            }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .empty-state-content {
+            max-width: 400px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        /* Animations */
+        @keyframes pulse-border {
+            0%, 100% {
+                border-color: var(--primary);
+            }
+
+            50% {
+                border-color: var(--accent);
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        /* CodeMirror Customization */
+        .CodeMirror {
+            height: 100% !important;
+            font-family: var(--font-mono);
+            font-size: 15px;
+        }
+
+        /* Icons (Simple SVG) */
+        .icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .editor-section {
+                width: 50%;
+            }
+
+            .feedback-section {
+                width: 50%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .editor-section, .feedback-section {
+                width: 100%;
+                border: none;
+            }
+
+            .editor-section {
+                height: 50%;
+                border-bottom: 3px solid var(--border);
+            }
+
+            .feedback-section {
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-box">
+                    <svg class="logo-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                    </svg>
+                </div>
+                <div class="header-title">
+                    <h1>DevMentor AI</h1>
+                    <p class="header-subtitle">Real-Time Code Learning Platform</p>
+                </div>
+            </div>
+            <div id="connectionStatus" class="connection-status disconnected">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3"></path>
+                </svg>
+                <span id="connectionText">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="control-group">
+                <label for="languageSelect">Language:</label>
+                <select id="languageSelect">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="csharp">C#</option>
+                    <option value="cpp">C++</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="php">PHP</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="skillLevelSelect">Skill Level:</label>
+                <select id="skillLevelSelect">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+
+            <button id="analyzeBtn" class="analyze-btn" disabled>
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Analyze Now
+            </button>
+
+            <div class="char-count" id="charCount">0 characters</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Code Editor -->
+            <div class="editor-section">
+                <textarea id="codeEditor"></textarea>
+            </div>
+
+            <!-- Feedback Panel -->
+            <div class="feedback-section" id="feedbackSection">
+                <div class="feedback-header">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                    <h2>AI Feedback</h2>
+                </div>
+                <div class="feedback-content" id="feedbackContent">
+                    <div class="empty-state">
+                        <div class="empty-state-content">
+                            <svg style="width: 64px; height: 64px; margin: 0 auto 1rem; color: var(--muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                            </svg>
+                            <h3>Welcome to DevMentor AI</h3>
+                            <p>Start coding in the editor on the left, and I'll provide instant feedback to help you learn and improve.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            // SignalR Hub URL - Update this to match your backend
+            hubUrl: '/hubs/code-analysis',
+            debounceDelay: 5000, // 2 seconds
+            minCodeLength: 10
+        };
+
+        // ============================================
+        // CODEMIRROR LANGUAGE MODES
+        // ============================================
+        const LANGUAGE_MODES = {
+            'javascript': 'javascript',
+            'python': 'python',
+            'java': 'text/x-java',
+            'csharp': 'text/x-csharp',
+            'cpp': 'text/x-c++src',
+            'go': 'text/x-go',
+            'rust': 'text/x-rustsrc',
+            'ruby': 'text/x-ruby',
+            'php': 'text/x-php'
+        };
+
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+        const state = {
+            connection: null,
+            editor: null,
+            debounceTimer: null,
+            isConnected: false,
+            currentLanguage: 'javascript',
+            currentSkillLevel: 'beginner',
+            lastAnalysis: null
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const elements = {
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectionText: document.getElementById('connectionText'),
+            languageSelect: document.getElementById('languageSelect'),
+            skillLevelSelect: document.getElementById('skillLevelSelect'),
+            analyzeBtn: document.getElementById('analyzeBtn'),
+            charCount: document.getElementById('charCount'),
+            feedbackContent: document.getElementById('feedbackContent'),
+            feedbackSection: document.getElementById('feedbackSection')
+        };
+
+        // ============================================
+        // SIGNALR CONNECTION
+        // ============================================
+        async function initializeSignalR() {
+            try {
+                // Create connection
+                state.connection = new signalR.HubConnectionBuilder()
+                    .withUrl(CONFIG.hubUrl)
+                    .withAutomaticReconnect()
+                    .configureLogging(signalR.LogLevel.Information)
+                    .build();
+
+                // Connection event handlers
+                state.connection.onreconnecting(() => {
+                    console.log('Reconnecting...');
+                    updateConnectionStatus('connecting');
+                });
+
+                state.connection.onreconnected(() => {
+                    console.log('Reconnected');
+                    updateConnectionStatus('connected');
+                });
+
+                state.connection.onclose((error) => {
+                    console.error('Connection closed', error);
+                    updateConnectionStatus('disconnected');
+                });
+
+                // Register SignalR event listeners
+                state.connection.on('Connected', (data) => {
+                    console.log('Connected to DevMentor AI:', data);
+                    updateConnectionStatus('connected');
+                });
+
+                state.connection.on('AnalysisStatus', (data) => {
+                    console.log('Analysis status:', data);
+                    displayStatus(data);
+                });
+
+                state.connection.on('AnalysisComplete', (data) => {
+                    console.log('Analysis complete:', data);
+                    displayAnalysis(data);
+                });
+
+                state.connection.on('AnalysisError', (data) => {
+                    console.error('Analysis error:', data);
+                    displayError(data);
+                });
+
+                // Start connection
+                await state.connection.start();
+                console.log('SignalR connected successfully');
+                updateConnectionStatus('connected');
+
+            } catch (error) {
+                console.error('SignalR connection failed:', error);
+                updateConnectionStatus('disconnected');
+                displayError({
+                    error: 'Connection Failed',
+                    message: 'Failed to connect to backend. Please ensure the API is running.'
+                });
+            }
+        }
+
+        // ============================================
+        // CONNECTION STATUS
+        // ============================================
+        function updateConnectionStatus(status) {
+            state.isConnected = status === 'connected';
+            elements.connectionStatus.className = `connection-status ${status}`;
+
+            const statusText = {
+                'connected': 'Connected',
+                'connecting': 'Connecting...',
+                'disconnected': 'Disconnected'
+            };
+
+            elements.connectionText.textContent = statusText[status] || 'Unknown';
+
+            // Update analyze button state
+            updateAnalyzeButton();
+
+            // Update feedback section border
+            if (status === 'connected') {
+                elements.feedbackSection.style.borderLeft = '3px solid var(--border)';
+            }
+        }
+
+        // ============================================
+        // CODE EDITOR INITIALIZATION
+        // ============================================
+        function initializeEditor() {
+            state.editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+                mode: LANGUAGE_MODES[state.currentLanguage],
+                theme: 'dracula',
+                lineNumbers: true,
+                lineWrapping: true,
+                indentUnit: 4,
+                tabSize: 4,
+                indentWithTabs: false,
+                autofocus: true
+            });
+
+            // Handle code changes
+            state.editor.on('change', handleCodeChange);
+        }
+
+        // ============================================
+        // CODE CHANGE HANDLER
+        // ============================================
+        function handleCodeChange() {
+            const code = state.editor.getValue();
+            const charCount = code.length;
+
+            // Update character count
+            elements.charCount.textContent = `${charCount} characters`;
+            if (charCount >= CONFIG.minCodeLength) {
+                elements.charCount.textContent += ' • Auto-analyzing...';
+            } else if (charCount > 0) {
+                elements.charCount.textContent += ` • Type ${CONFIG.minCodeLength - charCount} more for feedback`;
+            }
+
+            // Update analyze button
+            updateAnalyzeButton();
+
+            // Clear existing debounce timer
+            if (state.debounceTimer) {
+                clearTimeout(state.debounceTimer);
+            }
+
+            // Auto-analyze with debouncing
+            if (charCount >= CONFIG.minCodeLength && state.isConnected) {
+                state.debounceTimer = setTimeout(() => {
+                    analyzeCode();
+                }, CONFIG.debounceDelay);
+            }
+        }
+
+        // ============================================
+        // ANALYZE CODE
+        // ============================================
+        async function analyzeCode() {
+            const code = state.editor.getValue();
+
+            if (code.length < CONFIG.minCodeLength) {
+                displayError({
+                    error: 'Code Too Short',
+                    message: `Please type at least ${CONFIG.minCodeLength} characters to get feedback.`
+                });
+                return;
+            }
+
+            if (!state.isConnected) {
+                displayError({
+                    error: 'Not Connected',
+                    message: 'Please wait for the connection to be established.'
+                });
+                return;
+            }
+
+            try {
+                await state.connection.invoke('AnalyzeCode', code, state.currentLanguage, state.currentSkillLevel);
+            } catch (error) {
+                console.error('Failed to analyze code:', error);
+                displayError({
+                    error: 'Analysis Failed',
+                    message: error.message || 'Failed to analyze code. Please try again.'
+                });
+            }
+        }
+
+        // ============================================
+        // DISPLAY FUNCTIONS
+        // ============================================
+        function displayStatus(data) {
+            const statusHtml = `
+                <div class="status-card ${data.status}">
+                    <div class="status-card-header">
+                        ${data.status === 'analyzing' ?
+                            '<svg class="icon spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>' :
+                            '<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                        }
+                        <h3>${data.status === 'analyzing' ? 'Analyzing your code...' : data.status}</h3>
+                    </div>
+                    <div class="status-card-body">${data.message}</div>
+                </div>
+            `;
+            elements.feedbackContent.innerHTML = statusHtml;
+        }
+
+        function displayAnalysis(data) {
+            state.lastAnalysis = data;
+
+            // Convert markdown to HTML
+            const analysisHtml = marked.parse(data.analysis);
+
+            const html = `
+                <div class="status-card complete">
+                    <div class="status-card-header">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3>Analysis Complete</h3>
+                    </div>
+                    <div class="status-card-body">
+                        <span style="font-family: var(--font-mono);">${data.language}</span> •
+                        ${data.codeLength} characters •
+                        ${new Date(data.timestamp).toLocaleTimeString()}
+                    </div>
+                </div>
+                <div class="analysis-result">
+                    ${analysisHtml}
+                </div>
+            `;
+
+            elements.feedbackContent.innerHTML = html;
+        }
+
+        function displayError(data) {
+            const html = `
+                <div class="status-card error">
+                    <div class="status-card-header">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3>${data.error || 'Error'}</h3>
+                    </div>
+                    <div class="status-card-body">${data.message}</div>
+                </div>
+            `;
+            elements.feedbackContent.innerHTML = html;
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateAnalyzeButton() {
+            const code = state.editor ? state.editor.getValue() : '';
+            const canAnalyze = state.isConnected && code.length >= CONFIG.minCodeLength;
+            elements.analyzeBtn.disabled = !canAnalyze;
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        elements.languageSelect.addEventListener('change', (e) => {
+            state.currentLanguage = e.target.value;
+            state.editor.setOption('mode', LANGUAGE_MODES[state.currentLanguage]);
+        });
+
+        elements.skillLevelSelect.addEventListener('change', (e) => {
+            state.currentSkillLevel = e.target.value;
+        });
+
+        elements.analyzeBtn.addEventListener('click', () => {
+            analyzeCode();
+        });
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Initializing DevMentor AI...');
+
+            // Initialize CodeMirror
+            initializeEditor();
+
+            // Initialize SignalR
+            await initializeSignalR();
+
+            console.log('DevMentor AI ready!');
+        });
+    </script>
+</body>
+</html>

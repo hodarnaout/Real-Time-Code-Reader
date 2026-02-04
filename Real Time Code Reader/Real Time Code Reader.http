@@ -1,0 +1,6 @@
+@Real_Time_Code_Reader_HostAddress = http://localhost:5200
+
+GET {{Real_Time_Code_Reader_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
