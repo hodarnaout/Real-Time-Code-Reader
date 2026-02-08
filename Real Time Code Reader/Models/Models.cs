@@ -57,4 +57,20 @@
         public string Message { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
+    public class CodeExecutionRequest
+    {
+        public string Code { get; set; } = string.Empty;
+        public string Language { get; set; } = "python";
+    }
+
+    public class CodeExecutionResult
+    {
+        public bool Success { get; set; }
+        public string Output { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
+        public int ExitCode { get; set; }
+        public string Language { get; set; } = string.Empty;
+        public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
+        public double ExecutionTimeMs { get; set; }
+    }
 }

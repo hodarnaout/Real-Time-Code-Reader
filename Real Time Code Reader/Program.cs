@@ -10,7 +10,7 @@ builder.Services.AddSwaggerGen();
 
 // Register Gemini Service
 builder.Services.AddSingleton<IGeminiService, GeminiService>();
-
+builder.Services.AddSingleton<ICodeExecutionService, CodeExecutionService>();
 // Add SignalR
 builder.Services.AddSignalR(options =>
 {

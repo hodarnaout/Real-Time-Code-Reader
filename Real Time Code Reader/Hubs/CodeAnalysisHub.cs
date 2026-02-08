@@ -8,11 +8,12 @@ namespace DevMentorAI.API.Hubs
     {
         private readonly IGeminiService _geminiService;
         private readonly ILogger<CodeAnalysisHub> _logger;
-
-        public CodeAnalysisHub(IGeminiService geminiService, ILogger<CodeAnalysisHub> logger)
+        private readonly ICodeExecutionService _codeExecutionService;
+        public CodeAnalysisHub(IGeminiService geminiService, ILogger<CodeAnalysisHub> logger, ICodeExecutionService codeExecutionService)
         {
             _geminiService = geminiService;
             _logger = logger;
+            _codeExecutionService = codeExecutionService;
         }
 
         public override async Task OnConnectedAsync()
@@ -142,6 +143,53 @@ namespace DevMentorAI.API.Hubs
             {
                 _logger.LogError(ex, "Error generating practice");
                 await Clients.Caller.SendAsync("PracticeError", ex.Message);
+            }
+        }
+        public async Task ExecuteCode(string code, string language)
+        {
+            try
+            {
+                _logger.LogInformation($"Executing {language} code");
+
+                await Clients.Caller.SendAsync("ExecutionStatus", new
+                {
+                    status = "running",
+                    message = $"Running your {language} code...",
+                    timestamp = DateTime.UtcNow
+                });
+
+                var request = new CodeExecutionRequest
+                {
+                    Code = code,
+                    Language = language ?? "python"
+                };
+
+                var startTime = DateTime.UtcNow;
+                var result = await _codeExecutionService.ExecuteCodeAsync(request);
+                var executionTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                result.ExecutionTimeMs = executionTime;
+
+                await Clients.Caller.SendAsync("ExecutionComplete", new
+                {
+                    success = result.Success,
+                    output = result.Output,
+                    error = result.Error,
+                    exitCode = result.ExitCode,
+                    language = result.Language,
+                    executionTimeMs = result.ExecutionTimeMs,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing code");
+                await Clients.Caller.SendAsync("ExecutionError", new
+                {
+                    error = "Execution failed",
+                    message = ex.Message,
+                    timestamp = DateTime.UtcNow
+                });
             }
         }
     }
