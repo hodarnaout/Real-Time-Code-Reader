@@ -1,5 +1,7 @@
+
 using DevMentorAI.API.Services;
 using DevMentorAI.API.Hubs;
+using Real_Time_Code_Reader.Hubs; // Add this using statement
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,7 @@ builder.Services.AddSwaggerGen();
 // Register Gemini Service
 builder.Services.AddSingleton<IGeminiService, GeminiService>();
 builder.Services.AddSingleton<ICodeExecutionService, CodeExecutionService>();
+
 // Add SignalR
 builder.Services.AddSignalR(options =>
 {
@@ -18,12 +21,15 @@ builder.Services.AddSignalR(options =>
     options.KeepAliveInterval = TimeSpan.FromSeconds(10);
 });
 
-// Configure CORS (Keep this for external clients if needed)
+// Register TutorHub as a service
+builder.Services.AddTransient<TutorHub>();
+
+// Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:7149")
+        policy.WithOrigins("http://localhost:5173", "https://localhost:7149") // Add your frontend URL here
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -41,12 +47,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ============================================
-// ADD THESE LINES FOR STATIC FILE SUPPORT
-// ============================================
-app.UseDefaultFiles();  // Serves index.html as default
-app.UseStaticFiles();   // Enables serving files from wwwroot
-// ============================================
+// Enable WebSockets
+app.UseWebSockets();
+
+// Static file support
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseCors("AllowAll");
 app.UseAuthorization();
@@ -54,12 +60,17 @@ app.MapControllers();
 
 // Map SignalR hubs
 app.MapHub<CodeAnalysisHub>("/hubs/code-analysis").RequireCors("AllowAll");
-app.MapHub<ChatHub>("/hubs/chat").RequireCors("AllowAll");
+
+// Map the TutorHub WebSocket middleware
+app.Map("/tutorHub", app =>
+{
+    app.UseMiddleware<TutorHub>();
+});
 
 app.Logger.LogInformation("🚀 DevMentor AI API starting...");
 app.Logger.LogInformation("📡 SignalR hubs available at:");
 app.Logger.LogInformation("   - /hubs/code-analysis");
-app.Logger.LogInformation("   - /hubs/chat");
+app.Logger.LogInformation("   - /tutorHub (WebSocket)");
 app.Logger.LogInformation("🌐 Frontend available at: https://localhost:{port}/");
 
 app.Run();

@@ -1,6 +1,10 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using DevMentorAI.API.Services;
 using DevMentorAI.API.Models;
+using System.Threading.Tasks;
+using System;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace DevMentorAI.API.Hubs
 {
@@ -9,6 +13,7 @@ namespace DevMentorAI.API.Hubs
         private readonly IGeminiService _geminiService;
         private readonly ILogger<CodeAnalysisHub> _logger;
         private readonly ICodeExecutionService _codeExecutionService;
+
         public CodeAnalysisHub(IGeminiService geminiService, ILogger<CodeAnalysisHub> logger, ICodeExecutionService codeExecutionService)
         {
             _geminiService = geminiService;
@@ -145,6 +150,7 @@ namespace DevMentorAI.API.Hubs
                 await Clients.Caller.SendAsync("PracticeError", ex.Message);
             }
         }
+
         public async Task ExecuteCode(string code, string language)
         {
             try
@@ -190,6 +196,75 @@ namespace DevMentorAI.API.Hubs
                     message = ex.Message,
                     timestamp = DateTime.UtcNow
                 });
+            }
+        }
+
+        // NEW: Terminal Command Execution Method
+        public async Task ExecuteTerminalCommand(string command)
+        {
+            try
+            {
+                _logger.LogInformation($"Executing terminal command: {command}");
+
+                string shell;
+                string shellArgs;
+
+                if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                    System.Runtime.InteropServices.OSPlatform.Windows))
+                {
+                    shell = "cmd.exe";
+                    shellArgs = $"/c {command}";
+                }
+                else
+                {
+                    shell = "/bin/bash";
+                    shellArgs = $"-c \"{command}\"";
+                }
+
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = shell,
+                        Arguments = shellArgs,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    }
+                };
+
+                process.OutputDataReceived += async (sender, args) =>
+                {
+                    if (args.Data != null)
+                    {
+                        await Clients.Caller.SendAsync("ReceiveTerminalOutput", args.Data);
+                    }
+                };
+
+                process.ErrorDataReceived += async (sender, args) =>
+                {
+                    if (args.Data != null)
+                    {
+                        await Clients.Caller.SendAsync("ReceiveTerminalOutput", args.Data);
+                    }
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                await process.WaitForExitAsync();
+
+                await Clients.Caller.SendAsync("TerminalCommandComplete", process.ExitCode);
+
+                _logger.LogInformation($"Command completed with exit code: {process.ExitCode}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing terminal command");
+                await Clients.Caller.SendAsync("ReceiveTerminalOutput", $"Error: {ex.Message}");
+                await Clients.Caller.SendAsync("TerminalCommandComplete", -1);
             }
         }
     }
