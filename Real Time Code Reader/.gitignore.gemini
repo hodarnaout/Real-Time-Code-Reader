@@ -1,0 +1,16 @@
+# Google Cloud Credentials - NEVER COMMIT THESE!
+gcp_credentials.json
+*.json.key
+
+# Configuration with sensitive data
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+
+# Environment files
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.temp

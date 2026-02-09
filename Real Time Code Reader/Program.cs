@@ -1,7 +1,7 @@
-
-using DevMentorAI.API.Services;
 using DevMentorAI.API.Hubs;
-using Real_Time_Code_Reader.Hubs; // Add this using statement
+using DevMentorAI.API.Services;
+using Real_Time_Code_Reader.BLL.Services;
+using Real_Time_Code_Reader.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,9 +10,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register Gemini Service
+// Add HttpClient support (required for NanoBananaService and other HTTP calls)
+builder.Services.AddHttpClient();
+
+// Register Services
 builder.Services.AddSingleton<IGeminiService, GeminiService>();
 builder.Services.AddSingleton<ICodeExecutionService, CodeExecutionService>();
+builder.Services.AddScoped<INanoBananaService, NanoBananaService>();
 
 // Add SignalR
 builder.Services.AddSignalR(options =>
